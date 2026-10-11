@@ -364,6 +364,146 @@ async function processAQIUpdate(aqiData) {
   return { sent, skipped, total: activeSubscriptions.length };
 }
 
+// ── Night Forecast Email Template ─────────────────────────────────────────────
+
+function buildNightForecastEmailHTML(subscription, aqiData) {
+  const forecast = aqiData.forecast;
+  const category = getAQICategory(aqiData.aqi);
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tomorrow's AQI Forecast — ${aqiData.location}</title>
+</head>
+<body style="margin:0;padding:0;background:#f5f5f5;font-family:Arial,Helvetica,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f5;padding:20px 0;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;border:2px solid #f59e0b;">
+          <tr>
+            <td style="background:#1a1a2e;padding:20px 30px;text-align:center;">
+              <h1 style="color:#ffffff;margin:0;font-size:24px;">🌿 AirGuard Night Forecast</h1>
+              <p style="color:#aaaaaa;margin:5px 0 0;font-size:13px;">Decide tonight — not in a rush at 7 AM</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="background:#fff8e1;padding:25px 30px;text-align:center;border-bottom:3px solid #f59e0b;">
+              <p style="margin:0;font-size:14px;color:#f59e0b;font-weight:bold;text-transform:uppercase;letter-spacing:2px;">⏰ Tomorrow Morning Forecast (7–10 AM)</p>
+              <p style="margin:8px 0 0;font-size:48px;font-weight:900;color:#f59e0b;line-height:1;">${forecast.predictedRange}</p>
+              <p style="margin:4px 0 0;font-size:20px;font-weight:bold;color:#333;">${forecast.predictedCategory}</p>
+              <p style="margin:6px 0 0;font-size:15px;color:#666;">📍 ${aqiData.location}</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:20px 30px;border-bottom:1px solid #eeeeee;">
+              <h3 style="color:#333333;margin:0 0 8px;font-size:16px;">Tonight (current AQI)</h3>
+              <p style="margin:0;font-size:32px;font-weight:bold;color:#666;">${aqiData.aqi}</p>
+              <p style="margin:4px 0 0;font-size:14px;color:#888;">${category.label} — ${forecast.keyFactor}</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:20px 30px;border-bottom:1px solid #eeeeee;background:#f9fafb;">
+              <h3 style="color:#333333;margin:0 0 8px;font-size:16px;">What to do tonight</h3>
+              <p style="color:#555555;margin:0;line-height:1.6;font-size:14px;">${forecast.recommendation}</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:16px 30px;text-align:center;">
+              <p style="margin:0;font-size:12px;color:#999;">
+                Forecast confidence: <strong style="color:#333;text-transform:capitalize;">${forecast.confidence}</strong>
+              </p>
+              <p style="margin:6px 0 0;font-size:11px;color:#bbb;">Generated at 9 PM IST using Amazon Bedrock Nova Lite</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:16px 30px;text-align:center;background:#f8f9fa;">
+              <p style="margin:0;font-size:12px;color:#999;">
+                <a href="${process.env.FRONTEND_URL || "https://airguard.example.com"}" style="color:#f59e0b;text-decoration:none;font-weight:600;">Check live AQI at 6 AM →</a>
+              </p>
+              <p style="margin:8px 0 0;font-size:11px;color:#bbb;">
+                Alerts for <strong>${aqiData.location}</strong> ·
+                <a href="${process.env.FRONTEND_URL || "https://airguard.example.com"}/unsubscribe?email=${encodeURIComponent(subscription.email)}" style="color:#999;text-decoration:underline;">Unsubscribe</a>
+              </p>
+              <p style="margin:6px 0 0;font-size:11px;color:#bbb;">AirGuard © 2026 — WeMakeDevs × AWS Hackathon</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+async function sendNightForecastEmail(subscription, aqiData) {
+  if (!SNS_TOPIC_ARN) {
+    console.warn("SNS_TOPIC_ARN not set — skipping night forecast email");
+    return false;
+  }
+
+  const subject = `⏰ Tomorrow's AQI Forecast: ${aqiData.location} — Likely ${aqiData.forecast.predictedCategory}`;
+  const htmlBody = buildNightForecastEmailHTML(subscription, aqiData);
+
+  await snsClient.send(new PublishCommand({
+    TopicArn: SNS_TOPIC_ARN,
+    Subject:  subject,
+    Message:  htmlBody,
+    MessageAttributes: {
+      email: {
+        DataType:    "String",
+        StringValue: subscription.email
+      }
+    }
+  }));
+
+  return true;
+}
+
+// ── Process Night Forecast (called by Scheduler at 9 PM) ──────────────────────
+
+async function processNightForecast(aqiData) {
+  const locationKey = aqiData.location?.toLowerCase().replace(/\s+/g, "-");
+  if (!locationKey) return { sent: 0, error: "No location key" };
+
+  const subscriptions = await queryItems(
+    TABLES.SUBSCRIPTIONS,
+    "locationKey = :lk",
+    { ":lk": locationKey },
+    "LocationIndex"
+  );
+
+  const activeSubscriptions = subscriptions.filter(s => s.active);
+  let sent = 0;
+
+  for (const sub of activeSubscriptions) {
+    try {
+      await sendNightForecastEmail(sub, aqiData);
+
+      // Log the alert
+      await putItem(TABLES.ALERTS_LOG, {
+        alertId:   `${sub.subscriptionId}#${Date.now()}`,
+        email:     sub.email,
+        location:  aqiData.location,
+        aqi:       aqiData.aqi,
+        alertType: "night_forecast",
+        forecast:  aqiData.forecast,
+        sentAt:    new Date().toISOString(),
+        ttl:       Math.floor(Date.now() / 1000) + 2592000 // 30 days
+      });
+
+      sent++;
+      console.log(`Night forecast email sent to ${sub.email} for ${aqiData.location}`);
+    } catch (err) {
+      console.error(`Failed to send night forecast to ${sub.email}:`, err.message);
+    }
+  }
+
+  return { sent, total: activeSubscriptions.length };
+}
+
 // ── Main Handler ──────────────────────────────────────────────────────────────
 
 exports.handler = async (event) => {
@@ -374,6 +514,12 @@ exports.handler = async (event) => {
   // Internal invocation from Scheduler (no HTTP context)
   if (event.source === "airguard.scheduler") {
     const result = await processAQIUpdate(event.aqiData);
+    return { statusCode: 200, body: JSON.stringify(result) };
+  }
+
+  // Night forecast invocation from Scheduler
+  if (event.source === "airguard.scheduler.night_forecast") {
+    const result = await processNightForecast(event.aqiData);
     return { statusCode: 200, body: JSON.stringify(result) };
   }
 

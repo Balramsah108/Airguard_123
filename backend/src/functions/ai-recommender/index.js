@@ -29,7 +29,7 @@ const {
   BedrockRuntimeClient,
   InvokeModelCommand
 } = require("@aws-sdk/client-bedrock-runtime");
-const { getAQICategory } = require("/opt/nodejs/utils/aqi-utils");
+const { getAQICategory, getSeasonalContext } = require("/opt/nodejs/utils/aqi-utils");
 const { success, error, preflight, parseBody, getOrigin } = require("/opt/nodejs/utils/response-utils");
 
 const bedrockClient = new BedrockRuntimeClient({
@@ -124,6 +124,9 @@ function buildPrompt(data) {
     .map(g => groupDescriptions[g] || g)
     .join(", ");
 
+  // Get India-specific seasonal context for pollution source explanation
+  const seasonal = getSeasonalContext();
+
   return `You are an air quality health advisor for India. Provide clear, practical, empathetic advice.
 
 Current air quality data for ${location}:
@@ -136,6 +139,12 @@ Person profile:
 - Planned activity: ${activity}
 - Has air purifier at home: ${hasPurifier ? "Yes" : "No"}
 
+Seasonal/calendar context for India right now:
+- Likely pollution cause: ${seasonal.cause}
+- Expected duration: ${seasonal.duration}
+- Is it temporary: ${seasonal.isTemporary ? "Yes" : "No — ongoing"}
+- Key note: ${seasonal.note}
+
 Please provide a response in this EXACT JSON format (no markdown, just JSON):
 {
   "summary": "2-sentence plain English summary of current conditions",
@@ -147,7 +156,13 @@ Please provide a response in this EXACT JSON format (no markdown, just JSON):
   "indoorTips": ["tip 1", "tip 2"],
   "childrenAdvice": "Specific one-sentence advice for parents about sending children outside",
   "maskAdvice": "Whether and what type of mask is needed",
-  "whenToSeeDoctor": "Symptoms that should prompt a doctor visit"
+  "whenToSeeDoctor": "Symptoms that should prompt a doctor visit",
+  "whyHighToday": {
+    "cause": "One sentence explaining the specific reason AQI is elevated today",
+    "duration": "How long this situation is expected to last",
+    "isTemporary": true or false,
+    "actionNote": "One sentence on whether users should change long-term plans, not just today"
+  }
 }`;
 }
 
@@ -203,6 +218,15 @@ function getRuleBasedRecommendation(aqi, category, userProfile) {
       ? "N95 mask recommended for sensitive groups."
       : "N95 mask mandatory for everyone going outside.",
     whenToSeeDoctor: "Persistent cough, wheezing, chest tightness, shortness of breath, or eye irritation that doesn't improve indoors.",
+    whyHighToday: (() => {
+      const seasonal = getSeasonalContext();
+      return {
+        cause:       seasonal.cause,
+        duration:    seasonal.duration,
+        isTemporary: seasonal.isTemporary,
+        actionNote:  seasonal.note
+      };
+    })(),
     source: "rule-based"
   };
 }
