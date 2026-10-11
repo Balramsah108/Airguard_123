@@ -9,6 +9,7 @@ import PollutantGrid from "./components/PollutantGrid";
 import UserProfileModal from "./components/UserProfileModal";
 import EmptyState   from "./components/EmptyState";
 import IndiaContextBanner from "./components/IndiaContextBanner";
+import PollutionContext from "./components/PollutionContext";
 import { useAQI }   from "./hooks/useAQI";
 
 export default function App() {
@@ -93,6 +94,11 @@ export default function App() {
                 loading={aiLoading}
                 aqi={aqiData?.aqi}
               />
+            )}
+
+            {/* Pollution Source Context — shown when AQI ≥ 150 */}
+            {recommendation?.recommendation?.whyHighToday && aqiData?.aqi >= 150 && (
+              <PollutionContext data={recommendation.recommendation.whyHighToday} />
             )}
 
             {/* 24h History Chart */}

@@ -225,6 +225,156 @@ async function getHistory(locationKey) {
   }
 }
 
+// ── School Safety Status (Tier 2, Improvement 5) ──────────────────────────────
+
+function getSchoolStatus(aqi) {
+  if (aqi <= 100) return {
+    tier:  "GREEN",
+    emoji: "🟢",
+    label: "Green Day",
+    color: "#00b050",
+    recommendations: [
+      "✅ Normal school day",
+      "✅ All outdoor activities permitted",
+      "✅ PE and sports — proceed normally",
+      "✅ Morning assembly can be held outdoors"
+    ]
+  };
+
+  if (aqi <= 200) return {
+    tier:  "YELLOW",
+    emoji: "🟡",
+    label: "Yellow Day",
+    color: "#ffb300",
+    recommendations: [
+      "⚠️ School open — indoor precautions only",
+      "❌ No outdoor PE or sports",
+      "❌ Move morning assembly indoors",
+      "✅ Keep windows closed",
+      "✅ Students with asthma should carry inhalers"
+    ]
+  };
+
+  return {
+    tier:  "RED",
+    emoji: "🔴",
+    label: "Red Day",
+    color: "#d32f2f",
+    recommendations: [
+      "🚨 Cancel ALL outdoor activities",
+      "❌ No PE, no assembly outdoors",
+      "❌ No outdoor recess or breaks",
+      "✅ Keep all students indoors",
+      "✅ Notify parents of children with asthma or heart conditions",
+      "⚠️ Consider online/hybrid classes if AQI > 300"
+    ]
+  };
+}
+
+function buildStatusPageHTML(aqiData, status) {
+  const shareText = encodeURIComponent(
+    `${status.emoji} ${status.label} — ${aqiData.location}\n` +
+    `AQI: ${aqiData.aqi} (${aqiData.category})\n` +
+    `${status.recommendations[0]}\n\n` +
+    `Check live status: ${process.env.FRONTEND_URL || "https://airguard.example.com"}`
+  );
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AirGuard School Status — ${aqiData.location}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+           background: #0a0a0a; color: #fff; min-height: 100vh;
+           display: flex; align-items: center; justify-content: center;
+           padding: 16px; }
+    .card { background: #1a1a2e; border: 3px solid ${status.color};
+            border-radius: 16px; padding: 32px; max-width: 480px;
+            width: 100%; text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,0.3); }
+    .tier { font-size: 72px; font-weight: 900; color: ${status.color};
+            margin: 8px 0; line-height: 1; }
+    .label { font-size: 24px; font-weight: 700; color: ${status.color};
+             margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
+    .location { font-size: 14px; color: #aaa; margin-bottom: 24px; }
+    .aqi-box { background: rgba(255,255,255,0.05); border-radius: 8px;
+               padding: 16px; margin-bottom: 24px; }
+    .aqi-num { font-size: 48px; font-weight: 900; color: ${status.color}; }
+    .aqi-cat { font-size: 18px; color: #ccc; margin-top: 4px; }
+    .recs { text-align: left; margin-bottom: 24px; }
+    .recs h3 { font-size: 13px; color: #888; text-transform: uppercase;
+               letter-spacing: 1px; margin-bottom: 12px; text-align: center; }
+    .rec { font-size: 14px; padding: 10px 0; color: #ddd;
+           border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .rec:last-child { border-bottom: none; }
+    .share-btn { display: block; width: 100%; background: #25D366; color: #fff;
+                 border: none; border-radius: 8px; padding: 14px; font-size: 15px;
+                 font-weight: 700; text-decoration: none; margin-bottom: 10px;
+                 cursor: pointer; transition: background 0.2s; }
+    .share-btn:hover { background: #1fb855; }
+    .copy-btn { display: block; width: 100%; background: transparent;
+                color: #aaa; border: 1px solid #333; border-radius: 8px;
+                padding: 10px; font-size: 13px; cursor: pointer;
+                transition: all 0.2s; }
+    .copy-btn:hover { border-color: ${status.color}; color: ${status.color}; }
+    .footer { font-size: 11px; color: #555; margin-top: 20px; line-height: 1.5; }
+    @media (max-width: 480px) {
+      .card { padding: 24px; }
+      .tier { font-size: 56px; }
+      .label { font-size: 20px; }
+      .aqi-num { font-size: 40px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div style="font-size:20px">${status.emoji}</div>
+    <div class="tier">${status.tier}</div>
+    <div class="label">${status.label}</div>
+    <div class="location">
+      📍 ${aqiData.location} · ${new Date().toLocaleString("en-IN", {
+        timeZone: "Asia/Kolkata",
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit"
+      })}
+    </div>
+
+    <div class="aqi-box">
+      <div class="aqi-num">${aqiData.aqi}</div>
+      <div class="aqi-cat">AQI — ${aqiData.category}</div>
+    </div>
+
+    <div class="recs">
+      <h3>School Recommendations</h3>
+      ${status.recommendations.map(r => `<div class="rec">${r}</div>`).join("")}
+    </div>
+
+    <a class="share-btn"
+       href="https://wa.me/?text=${shareText}"
+       target="_blank"
+       rel="noopener noreferrer">
+      📱 Share on WhatsApp
+    </a>
+
+    <button class="copy-btn"
+            onclick="navigator.clipboard.writeText(window.location.href).then(() => this.textContent='✅ Link copied!')">
+      📋 Copy Status Link
+    </button>
+
+    <div class="footer">
+      Updates every 30 minutes · Based on CPCB India AQI scale<br>
+      Powered by AirGuard × AWS Lambda · Built for WeMakeDevs Hackathon 2026
+    </div>
+  </div>
+</body>
+</html>`;
+}
+
 // ── Main Handler ──────────────────────────────────────────────────────────────
 
 exports.handler = async (event) => {
@@ -235,6 +385,54 @@ exports.handler = async (event) => {
 
   const path   = event.path || event.rawPath || "";
   const params = event.queryStringParameters || {};
+
+  // ── Route: School Safety Status Page ───────────────────────────────────────
+  if (path.includes("/status/")) {
+    const city = path.split("/status/")[1];
+    if (!city || city.length < 2) {
+      return error("City name required in path", 400, origin);
+    }
+
+    const location = sanitizeLocation(decodeURIComponent(city));
+    if (!location) {
+      return error("Invalid city name", 400, origin);
+    }
+
+    const locationKey = location.toLowerCase().replace(/\s+/g, "-");
+
+    // Try to get AQI (check cache first, then fetch)
+    const { fresh, stale } = await getCached(locationKey);
+    let aqiData = fresh || stale;
+
+    if (!aqiData) {
+      // No cache — fetch fresh
+      try {
+        const rawData = await fetchFromWAQI(location);
+        aqiData = buildAQIResponse(rawData, location);
+        await setCache(locationKey, aqiData);
+      } catch (err) {
+        console.error(`Failed to fetch AQI for status page: ${location}`, err.message);
+        return error(
+          `Could not load status for "${location}". Please try again later.`,
+          502,
+          origin
+        );
+      }
+    }
+
+    const status = getSchoolStatus(aqiData.aqi);
+    const html = buildStatusPageHTML(aqiData, status);
+
+    return {
+      statusCode: 200,
+      headers: {
+        "Content-Type": "text/html; charset=utf-8",
+        "Access-Control-Allow-Origin": origin,
+        "Cache-Control": "public, max-age=1800"  // Cache for 30 min
+      },
+      body: html
+    };
+  }
 
   // ── Route: Search stations ─────────────────────────────────────────────────
   if (path.endsWith("/aqi/search")) {

@@ -166,9 +166,51 @@ export default function AlertSignup({ location, userProfile }) {
           Get AQI Alerts for {location}
         </h2>
       </div>
-      <p style={{ fontSize: "13px", color: "var(--text-muted)", marginBottom: "18px" }}>
+      <p style={{ fontSize: "13px", color: "var(--text-muted)", marginBottom: "14px" }}>
         Receive email alerts when air quality deteriorates. Free, no spam, unsubscribe anytime.
       </p>
+
+      {/* WhatsApp Bot Banner */}
+      <a
+        href="https://wa.me/15556447862"
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{
+          display:        "flex",
+          alignItems:     "center",
+          gap:            "12px",
+          background:     "rgba(37,211,102,0.08)",
+          border:         "1px solid rgba(37,211,102,0.3)",
+          borderRadius:   "10px",
+          padding:        "12px 16px",
+          marginBottom:   "18px",
+          textDecoration: "none",
+          transition:     "background 0.2s, border-color 0.2s",
+          cursor:         "pointer"
+        }}
+        onMouseEnter={e => {
+          e.currentTarget.style.background = "rgba(37,211,102,0.15)";
+          e.currentTarget.style.borderColor = "rgba(37,211,102,0.6)";
+        }}
+        onMouseLeave={e => {
+          e.currentTarget.style.background = "rgba(37,211,102,0.08)";
+          e.currentTarget.style.borderColor = "rgba(37,211,102,0.3)";
+        }}
+      >
+        <span style={{ fontSize: "24px", flexShrink: 0 }}>💬</span>
+        <div style={{ flex: 1 }}>
+          <p style={{ fontSize: "13px", fontWeight: "700", color: "#25D366", margin: 0 }}>
+            WhatsApp Bot — No app needed
+          </p>
+          <p style={{ fontSize: "12px", color: "var(--text-muted)", margin: "2px 0 0" }}>
+            Text <strong style={{ color: "var(--text-primary)" }}>"Delhi AQI"</strong> to{" "}
+            <strong style={{ color: "#25D366" }}>+1 (555) 644-7862</strong> — get AQI in 5 seconds
+          </p>
+        </div>
+        <span style={{ fontSize: "11px", color: "#25D366", fontWeight: "600", flexShrink: 0 }}>
+          Open →
+        </span>
+      </a>
 
       <form onSubmit={handleSubscribe} noValidate>
         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
