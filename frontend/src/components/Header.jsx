@@ -46,6 +46,42 @@ export default function Header({ onOpenProfile, userProfile }) {
             <span style={{ color: "#ff9900", fontWeight: "600" }}>AWS</span>
           </span>
 
+          {/* WhatsApp Bot Button */}
+          <a
+            href="https://wa.me/15556447862"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Text 'Delhi AQI' to get air quality on WhatsApp"
+            aria-label="Open WhatsApp bot"
+            style={{
+              display:        "flex",
+              alignItems:     "center",
+              gap:            "6px",
+              background:     "rgba(37,211,102,0.12)",
+              border:         "1px solid rgba(37,211,102,0.4)",
+              borderRadius:   "8px",
+              padding:        "6px 12px",
+              color:          "#25D366",
+              fontSize:       "13px",
+              fontWeight:     "600",
+              textDecoration: "none",
+              cursor:         "pointer",
+              transition:     "all 0.2s",
+              whiteSpace:     "nowrap"
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = "rgba(37,211,102,0.22)";
+              e.currentTarget.style.borderColor = "#25D366";
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = "rgba(37,211,102,0.12)";
+              e.currentTarget.style.borderColor = "rgba(37,211,102,0.4)";
+            }}
+          >
+            <span style={{ fontSize: "15px" }}>💬</span>
+            WhatsApp Bot
+          </a>
+
           <button
             onClick={onOpenProfile}
             title="Set your health profile for personalized advice"

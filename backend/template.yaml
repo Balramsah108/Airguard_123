@@ -322,8 +322,8 @@ Resources:
                 - !GetAtt AlertSystemFunction.Arn
       Environment:
         Variables:
-          WHATSAPP_TOKEN:           "YOUR_META_TOKEN_HERE"
-          WHATSAPP_PHONE_NUMBER_ID: "YOUR_PHONE_NUMBER_ID"
+          WHATSAPP_TOKEN:           "EAAafiY7DCm8BSkxgFCSSKiP91c21FxIYIEZCm4EYQOaRpGkFrZBcyYtYZCmr8sMvvPV4279KtdzEWPOcsjugW9diFZB8SyLsS2HTeKSFuLnfuc0EzZAFKnLTmATV7G6tawnaNl32nP4EdZAqvLOBnEIpZAzCpofZCPbOI0LbwHwRZCIVhYttrVsNYwiDcZADAOZCnXfKpekH8osHEs9BSZCBdQVekO8TwAAwHrEckRCkFyubnUb5SN1Em4Uca3CEU5UM9YQvtS5J96IjpVl2tFKp3ZCT9"
+          WHATSAPP_PHONE_NUMBER_ID: "1390673750796204"
           WEBHOOK_VERIFY_TOKEN:     "airguard_verify_2026"
           AQI_FETCHER_ARN:          !GetAtt AQIFetcherFunction.Arn
           ALERT_SYSTEM_ARN:         !GetAtt AlertSystemFunction.Arn
